@@ -1,3 +1,4 @@
+import { launchFirework, updateFireworks, type Firework } from './fireworks';
 import { palette } from './palette';
 import {
   archBounds,
@@ -7,6 +8,7 @@ import {
   drawBooth,
   drawBunting,
   drawCloud,
+  drawFireworks,
   drawFloaters,
   drawFrontHedge,
   drawField,
@@ -108,6 +110,8 @@ export function startMidway(canvas: HTMLCanvasElement, options: MidwayOptions): 
   const floaters: Floater[] = [];
   const calm = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   let nextFloater = 2;
+  const fireworks: Firework[] = [];
+  let nextFirework = 3;
   let inReach: BoothSlot | undefined;
   let destination: Point | undefined;
 
@@ -203,6 +207,10 @@ export function startMidway(canvas: HTMLCanvasElement, options: MidwayOptions): 
       else walkToBooth(booth);
       return;
     }
+    if (point.y < HORIZON) {
+      fireworks.push(launchFirework(point, palette.fireworks, Math.random));
+      return;
+    }
     const path = findPath(map, player, toTile(point.x, point.y));
     if (path) {
       player.path = path;
@@ -211,7 +219,8 @@ export function startMidway(canvas: HTMLCanvasElement, options: MidwayOptions): 
   };
   const onPointerMove = (event: PointerEvent) => {
     const point = toWorld(event);
-    canvas.style.cursor = boothAt(point) || billboardAt(point) ? 'pointer' : 'default';
+    canvas.style.cursor =
+      boothAt(point) || billboardAt(point) || point.y < HORIZON ? 'pointer' : 'default';
   };
 
   window.addEventListener('keydown', onKeyDown);
@@ -239,6 +248,26 @@ export function startMidway(canvas: HTMLCanvasElement, options: MidwayOptions): 
       f.y -= 22 * dt;
     }
     floaters.splice(0, floaters.length, ...floaters.filter((f) => f.age < 6));
+  };
+
+  const updateFireworksShow = (dt: number) => {
+    updateFireworks(fireworks, dt, Math.random);
+    if (calm) return;
+    nextFirework -= dt;
+    if (nextFirework > 0) return;
+    // Now and then, a few go up together somewhere over the visible sky.
+    nextFirework = 6 + Math.random() * 8;
+    const volley = 1 + Math.floor(Math.random() * 3);
+    for (let i = 0; i < volley; i++) {
+      const burst = {
+        x: camera.x + view.w * (0.15 + Math.random() * 0.7),
+        y: HORIZON - 50 - Math.random() * 80,
+      };
+      const f = launchFirework(burst, palette.fireworks, Math.random);
+      // Stagger the volley so they don't all burst at once.
+      f.rocket.y += i * 40;
+      fireworks.push(f);
+    }
   };
 
   const updateCamera = (dt: number) => {
@@ -286,6 +315,8 @@ export function startMidway(canvas: HTMLCanvasElement, options: MidwayOptions): 
     const cam = { x: Math.round(camera.x * k) / k, y: Math.round(camera.y * k) / k };
     const visible: Box = { left: cam.x, top: cam.y, right: cam.x + view.w, bottom: cam.y + view.h };
     ctx.setTransform(k, 0, 0, k, -cam.x * k, -cam.y * k);
+    // Behind the field, so rockets rise from beyond the midway.
+    drawFireworks(ctx, fireworks);
     drawField(ctx, visible);
     if (ground) {
       const bounds = groundBounds(map);
@@ -429,6 +460,7 @@ export function startMidway(canvas: HTMLCanvasElement, options: MidwayOptions): 
     }
 
     updateFloaters(dt);
+    updateFireworksShow(dt);
     updateCamera(dt);
     draw(time / 1000);
     frame = requestAnimationFrame(loop);

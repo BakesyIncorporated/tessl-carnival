@@ -54,4 +54,5 @@ export const palette = {
   pants: ['#2d3a6b', '#3b2a4f', '#5a4a3a'],
   bunting: [colors.stripeA, colors.accent, '#2b8ccc', colors.stripeB],
   balloons: [colors.stripeA, colors.accent, '#2b8ccc', colors.water, '#f59ac0'],
+  fireworks: [colors.stripeA, colors.accent, colors.stripeB, '#f59ac0', '#b48ee0'],
 } as const;
