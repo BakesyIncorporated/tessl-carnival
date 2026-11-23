@@ -1,5 +1,6 @@
 import { canvasFont, theme } from '../carnival';
 import bannerUrl from './aidevcon-banner.png';
+import { sparkle, type Firework } from './fireworks';
 import { palette } from './palette';
 import {
   CART_KINDS,
@@ -1728,6 +1729,51 @@ export function drawFloaters(ctx: Ctx, floaters: readonly Floater[]) {
     ctx.stroke();
     oval(ctx, f.x + sway, f.y, 5, 6.5, f.color);
     oval(ctx, f.x + sway - 1.8, f.y - 2.5, 1.4, 2, 'rgba(255,255,255,0.6)');
+  }
+  ctx.globalAlpha = 1;
+}
+
+/** Fireworks bursting over the midway: a climbing spark, then a ring of trails. */
+export function drawFireworks(ctx: Ctx, fireworks: readonly Firework[]) {
+  ctx.lineCap = 'round';
+  for (const f of fireworks) {
+    if (f.age === undefined) {
+      oval(ctx, f.rocket.x, f.rocket.y, 1.6, 1.6, palette.white);
+      ctx.globalAlpha = 0.5;
+      stroke(
+        ctx,
+        [
+          [f.rocket.x, f.rocket.y],
+          [f.rocket.x, f.rocket.y + 8],
+        ],
+        f.colors[0],
+        1.2,
+      );
+      ctx.globalAlpha = 1;
+      continue;
+    }
+    const glow = sparkle(f);
+    // A quick flash where it burst.
+    if (f.age < 0.15) {
+      ctx.globalAlpha = 1 - f.age / 0.15;
+      oval(ctx, f.burst.x, f.burst.y, 10, 10, palette.white);
+    }
+    ctx.globalAlpha = glow;
+    f.sparks.forEach((s, i) => {
+      const color = f.colors[i % f.colors.length];
+      stroke(
+        ctx,
+        [
+          [s.x - s.vx * 0.08, s.y - s.vy * 0.08],
+          [s.x, s.y],
+        ],
+        color,
+        1.4,
+      );
+      // Sparks twinkle as they fade.
+      if (glow > 0.5 || (i + Math.floor(f.age! * 12)) % 3 !== 0)
+        oval(ctx, s.x, s.y, 1.3, 1.3, color);
+    });
   }
   ctx.globalAlpha = 1;
 }
